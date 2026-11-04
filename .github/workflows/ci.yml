@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint and tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Tests (offline, no API keys)
+        run: pytest --cov=bioagent --cov-report=term-missing --cov-fail-under=85
+
+      - name: Sample report is reproducible
+        run: |
+          python scripts/generate_sample_report.py
+          git diff --exit-code sample_report.md
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t bioagent-discovery:ci .
+      - name: Smoke test (CLI help and missing-key guard)
+        run: |
+          docker run --rm bioagent-discovery:ci --help
+          set +e
+          docker run --rm bioagent-discovery:ci --disease "test"
+          code=$?
+          set -e
+          test "$code" -eq 2

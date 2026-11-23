@@ -95,6 +95,29 @@ GitHub Actions runs lint (ruff), the tests on Python 3.10 and 3.12, checks that 
 - Numeric activity normalization to nM for reproducible compound ranking
 - PubChem queries based on molecular SMILES, with manual-review status when resolution fails
 
+## Design Decisions
+
+- **A guarded, sequential graph instead of free-running agents.** The three stages always run in
+  order, and each transition checks that the previous stage produced what the next one needs
+  (a target for chemistry, candidates for screening). When it did not, a `finish` node writes a
+  controlled report with the recorded errors instead of failing downstream.
+- **One typed shared state.** `DiscoveryState` is the single place where stage results and
+  accumulated errors live, so a stage can fail without losing what earlier stages found.
+- **The LLM does not return free text where a decision depends on it.** Target extraction goes
+  through a Pydantic schema (protein, symbol, UniProt id only when evidenced, justification and a
+  HIGH/MEDIUM/LOW confidence), so the choice of target is validated and carries its rationale.
+- **External APIs are treated as unreliable.** ChEMBL and PubChem calls use a retry policy with
+  exponential backoff on 429 and 5xx responses and an explicit timeout, and failures are
+  recorded in the state rather than raised.
+- **Literature retrieval retries with the disease name and two variants** (`<disease> disease`,
+  `<disease> pathology`) before giving up.
+- **Candidates are ranked on one unit.** IC50 and Ki activities are normalized to nM so the
+  ranking is reproducible, and PubChem is queried by SMILES; when a molecule cannot be resolved
+  it is marked for manual review instead of being dropped silently.
+- **The scope is stated in the generated report too.** The screener appends a note that the
+  report is a research prioritization artifact, not evidence of efficacy or safety; see the
+  limitations below.
+
 ## Scientific Limitations
 
 - Literature-based target selection is hypothesis generation, not biological validation.

@@ -138,6 +138,10 @@ scripts/        # sample report generator
 tests/          # offline pytest suite
 ```
 
+## Development history
+
+This project was developed locally between 2026-09-10 and 2026-11-17. The commit history was created afterwards, and the commit dates were adjusted to match the period in which the work was actually done.
+
 ## License
 
 MIT

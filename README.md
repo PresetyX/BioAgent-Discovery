@@ -1,3 +1,5 @@
+🌐 **English** | [Português (BR)](README.pt-BR.md)
+
 # BioAgent-Discovery
 
 [![CI](https://github.com/PresetyX/BioAgent-Discovery/actions/workflows/ci.yml/badge.svg)](https://github.com/PresetyX/BioAgent-Discovery/actions/workflows/ci.yml)
